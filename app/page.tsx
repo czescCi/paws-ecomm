@@ -1,20 +1,44 @@
 import { client } from "@/sanity/lib/client"
+import { product } from "@/sanity/schemas/product-schema"
 import { groq } from "next-sanity"
 
 import { SanityProduct } from "@/config/inventory"
 import { siteConfig } from "@/config/site"
+import { seedSanityData } from "@/lib/seed"
 import { cn } from "@/lib/utils"
 import { ProductFilters } from "@/components/product-filters"
 import { ProductGrid } from "@/components/product-grid"
 import { ProductSort } from "@/components/product-sort"
-import { seedSanityData } from "@/lib/seed"
-import { product } from "@/sanity/schemas/product-schema"
 
-interface Props {}
+interface Props {
+  searchParams: {
+    date?: string
+    price?: string
+    color?: string
+    category?: string
+    size?: string
+  }
+}
 
-export default async function Page() {
+export default async function Page({ searchParams }: Props) {
   // await seedSanityData()
-const products = await client.fetch<SanityProduct[]>(groq`*[_type == "product"] {
+  const { date = "desc", price } = searchParams
+  const priceOrder = searchParams.price
+    ? `| order(price ${searchParams.price})`
+    : ""
+  const dateOrder = searchParams.date
+    ? `| order(_createdAt ${searchParams.date})`
+    : ""
+  const order = `${priceOrder}${dateOrder}`
+
+  const productFilter = `_type == "product"`
+  const colorFilter = color ? `&& "${color}" in colors` : ""
+  const categoryFilter = category ? `&& "${category}" in categories` : ""
+  const sizeFilter = size ? `&& "${size}" in sizes` : ""
+
+  const filter = `*[${productFilter}${colorFilter}${categoryFilter}${sizeFilter}]`
+
+  const products = await client.fetch<SanityProduct[]>(groq`${filter} ${order} {
   _id,
   _createdAt,
   name,
@@ -25,13 +49,16 @@ const products = await client.fetch<SanityProduct[]>(groq`*[_type == "product"] 
   description,
   "slug": slug.current
 }`)
-console.log(products)
 
   return (
     <div>
       <div className="px-4 pt-20 text-center">
-        <h1 className="text-4xl font-extrabold tracking-normal">{siteConfig.name}</h1>
-        <p className="mx-auto mt-4 max-w-3xl text-base">{siteConfig.description}</p>
+        <h1 className="text-4xl font-extrabold tracking-normal">
+          {siteConfig.name}
+        </h1>
+        <p className="mx-auto mt-4 max-w-3xl text-base">
+          {siteConfig.description}
+        </p>
       </div>
       <div>
         <main className="mx-auto max-w-6xl px-6">
@@ -40,15 +67,27 @@ console.log(products)
               Sztuk: {products.length}
             </h1>
             {/* Product Sort */}
+            <ProductSort />
           </div>
 
           <section aria-labelledby="products-heading" className="pb-24 pt-6">
             <h2 id="products-heading" className="sr-only">
               Products
             </h2>
-            <div className="grid grid-cols-1 gap-x-8 gap-y-10 lg:grid-cols-4">
-              <div className="hidden lg:block">{/* Product filters */}</div>
+            <div
+              className={cn(
+                "grid grid-cols-1 gap-x-8 gap-y-10 lg:grid-cols-4",
+                products.length > 0
+                  ? "lg:grid-cols-4"
+                  : "lg:grid-cols-[1fr_3fr]"
+              )}
+            >
+              <div className="hidden lg:block">
+                {/* Product filters */}
+                <ProductFilters />
+              </div>
               {/* Product grid */}
+              <ProductGrid products={products} />
             </div>
           </section>
         </main>

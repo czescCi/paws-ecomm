@@ -19,7 +19,8 @@ export function SiteFooter() {
           ))}
         </nav>
         <Link
-          href="https://www.fullstack.so"
+          href="https://github.com/czescCi"
+          target="_blank"
           className="mt-10 block text-center text-xs leading-5"
         >
           &copy; {new Date().getFullYear()} {siteConfig.name} LLC. All rights
